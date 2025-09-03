@@ -1,0 +1,119 @@
+/**
+ * Responsive design and mobile optimizations
+ */
+
+/* Tablet and Mobile */
+@media (max-width: 768px) {
+    body {
+        align-items: flex-start;
+        padding: 5px;
+        overflow-y: auto;
+    }
+    
+    .terminal {
+        width: 100%;
+        margin: 0;
+        border-radius: 4px;
+        max-height: none;
+        min-height: 100vh;
+    }
+    
+    .terminal-header {
+        padding: 8px 12px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .terminal-title {
+        font-size: 12px;
+    }
+    
+    .terminal-content {
+        padding: 10px;
+        font-size: 12px;
+        min-height: auto;
+        overflow-x: auto;
+    }
+    
+    .command-line {
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+    
+    .prompt {
+        margin-right: 4px;
+        font-size: 11px;
+    }
+    
+    .command {
+        font-size: 11px;
+    }
+    
+    .output {
+        margin-left: 10px;
+        margin-bottom: 10px;
+        font-size: 11px;
+        word-break: break-word;
+    }
+    
+    .ascii-art {
+        font-size: 9px;
+        line-height: 1.0;
+        overflow-x: auto;
+        white-space: pre;
+        margin: 15px 0;
+    }
+    
+    .social-links {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+        margin-left: 20px;
+    }
+    
+    .social-link {
+        padding: 0;
+        background: none;
+        border-radius: 0;
+        border: none;
+        color: var(--accent-blue);
+        font-size: 11px;
+        font-family: 'Fira Code', 'Courier New', monospace;
+        text-decoration: none;
+        display: block;
+    }
+    
+    .contact-info {
+        margin-top: 20px;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    .terminal-content {
+        padding: 8px;
+        font-size: 11px;
+    }
+    
+    .ascii-art {
+        font-size: 7px;
+        line-height: 0.9;
+        overflow-x: auto;
+        white-space: pre;
+        margin: 10px 0;
+    }
+    
+    .prompt, .command {
+        font-size: 10px;
+    }
+    
+    .output {
+        font-size: 10px;
+    }
+    
+    .terminal-button {
+        width: 10px;
+        height: 10px;
+    }
+}

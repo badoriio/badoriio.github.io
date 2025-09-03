@@ -1,0 +1,38 @@
+/**
+ * Base styles and CSS reset
+ */
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&display=swap');
+
+/* CSS Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Fira Code', 'Courier New', monospace;
+    background: #0d1117;
+    color: #58a6ff;
+    min-height: 100vh;
+    overflow: hidden;
+    padding: 20px;
+}
+
+/* Color Variables */
+:root {
+    --primary-bg: #0d1117;
+    --secondary-bg: #161b22;
+    --tertiary-bg: #21262d;
+    --border-color: #30363d;
+    --primary-text: #c9d1d9;
+    --secondary-text: #8b949e;
+    --accent-blue: #58a6ff;
+    --accent-purple: #7c3aed;
+    --success-green: #56d364;
+    --warning-yellow: #d29922;
+    --error-red: #f85149;
+    --close-red: #ff5f57;
+    --minimize-yellow: #ffbd2e;
+    --maximize-green: #28ca42;
+}

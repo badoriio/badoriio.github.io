@@ -1,0 +1,344 @@
+name: 🚀 Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '*.md'
+      - '.gitignore' 
+      - '.vscode/**'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      skip-tests:
+        description: 'Skip tests and build directly'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Prevent concurrent deployments but allow manual cancellation
+concurrency:
+  group: "pages-deploy"
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  # Pre-deployment validation
+  pre-deploy:
+    name: 🔍 Pre-deployment Check
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+      skip-tests: ${{ steps.check.outputs.skip-tests }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2 # Need at least 2 commits to compare
+        
+    - name: 🔍 Check deployment conditions
+      id: check
+      run: |
+        skip_tests="${{ github.event.inputs.skip-tests || 'false' }}"
+        echo "skip-tests=$skip_tests" >> $GITHUB_OUTPUT
+        
+        # Always deploy for manual workflow_dispatch or main branch pushes
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "should-deploy=true" >> $GITHUB_OUTPUT
+          echo "✅ Deployment conditions met"
+        else
+          echo "should-deploy=false" >> $GITHUB_OUTPUT
+          echo "❌ Deployment conditions not met"
+        fi
+
+  build-and-test:
+    name: 🏗️ Build & Quality Check
+    runs-on: ubuntu-latest
+    needs: pre-deploy
+    if: needs.pre-deploy.outputs.should-deploy == 'true' && needs.pre-deploy.outputs.skip-tests == 'false'
+    outputs:
+      deployment-ready: ${{ steps.deployment-check.outputs.ready }}
+      domain: ${{ steps.deployment-check.outputs.domain }}
+      build-size: ${{ steps.size-check.outputs.size }}
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: 🗂️ Restore deployment cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.npm
+          node_modules/.cache
+          dist/.vite
+        key: deploy-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('src/**/*.ts', 'src/**/*.css') }}
+        restore-keys: |
+          deploy-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
+          deploy-${{ runner.os }}-
+
+    - name: 📦 Install dependencies
+      run: npm ci --prefer-offline --no-audit --progress=false
+
+    - name: ⚡ Quick validation
+      run: |
+        echo "## 🔍 Pre-build Validation" >> $GITHUB_STEP_SUMMARY
+        npm run type-check
+        echo "✅ TypeScript compilation passed" >> $GITHUB_STEP_SUMMARY
+        
+        npm run lint:check
+        echo "✅ Linting passed" >> $GITHUB_STEP_SUMMARY
+
+    - name: 🧪 Run critical tests
+      run: |
+        npm run test:ci
+        echo "✅ All tests passed" >> $GITHUB_STEP_SUMMARY
+
+    - name: 🏗️ Build production assets
+      run: |
+        echo "## 🏗️ Building Production Assets" >> $GITHUB_STEP_SUMMARY
+        npm run build
+        echo "✅ Production build completed" >> $GITHUB_STEP_SUMMARY
+      env:
+        NODE_ENV: production
+
+    - name: 📏 Analyze build output
+      id: size-check
+      run: |
+        echo "## 📦 Build Analysis" >> $GITHUB_STEP_SUMMARY
+        echo "| Asset | Size | Gzipped |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|------|---------|" >> $GITHUB_STEP_SUMMARY
+        
+        total_size=0
+        # Process JavaScript and CSS files
+        for pattern in "dist/assets/*.js" "dist/assets/*.css" "dist/index.html"; do
+          if ls $pattern 1> /dev/null 2>&1; then
+            for file in $pattern; do
+              if [ -f "$file" ]; then
+                # Get file size (cross-platform)
+                if command -v stat >/dev/null; then
+                  if stat -c%s "$file" >/dev/null 2>&1; then
+                    size=$(stat -c%s "$file")
+                  else
+                    size=$(stat -f%z "$file")
+                  fi
+                else
+                  size=$(wc -c < "$file")
+                fi
+                
+                gzip_size=$(gzip -c "$file" | wc -c)
+                size_kb=$((size / 1024))
+                gzip_kb=$((gzip_size / 1024))
+                total_size=$((total_size + size))
+                echo "| $(basename "$file") | ${size_kb}KB | ${gzip_kb}KB |" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          fi
+        done
+        
+        total_kb=$((total_size / 1024))
+        echo "size=${total_kb}" >> $GITHUB_OUTPUT
+        echo "**Total: ${total_kb}KB**" >> $GITHUB_STEP_SUMMARY
+
+    - name: 🌐 Validate deployment assets
+      id: deployment-check
+      run: |
+        echo "## 🔍 Deployment Validation" >> $GITHUB_STEP_SUMMARY
+        
+        # Run domain validation script
+        if [ -f "scripts/validate-domain.sh" ]; then
+          chmod +x scripts/validate-domain.sh
+          ./scripts/validate-domain.sh
+        fi
+        
+        # Check deployment readiness
+        if [ -d "dist" ] && [ "$(ls -A dist)" ]; then
+          echo "ready=true" >> $GITHUB_OUTPUT
+          echo "✅ Deployment artifacts verified" >> $GITHUB_STEP_SUMMARY
+          
+          # Extract domain from CNAME
+          if [ -f "dist/CNAME" ]; then
+            domain=$(cat dist/CNAME)
+            echo "domain=$domain" >> $GITHUB_OUTPUT
+            echo "🌐 Custom domain: $domain" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Verify critical files
+          files_ok=true
+          [ -f "dist/index.html" ] || files_ok=false
+          [ -d "dist/assets" ] || files_ok=false
+          
+          if [ "$files_ok" = true ]; then
+            echo "📁 All critical files present" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Missing critical files" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+        else
+          echo "ready=false" >> $GITHUB_OUTPUT
+          echo "❌ No deployment artifacts found" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+
+    - name: 🔧 Setup GitHub Pages
+      uses: actions/configure-pages@v5
+
+    - name: 📤 Upload deployment artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./dist
+        retention-days: 1
+
+  # Fast build job for when tests are skipped
+  quick-build:
+    name: ⚡ Quick Build
+    runs-on: ubuntu-latest
+    needs: pre-deploy
+    if: needs.pre-deploy.outputs.should-deploy == 'true' && needs.pre-deploy.outputs.skip-tests == 'true'
+    outputs:
+      deployment-ready: 'true'
+      domain: ${{ steps.domain-check.outputs.domain }}
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci --prefer-offline --no-audit --progress=false
+
+    - name: 🏗️ Build (skip tests)
+      run: |
+        echo "## ⚡ Quick Build (Tests Skipped)" >> $GITHUB_STEP_SUMMARY
+        npm run build
+        echo "✅ Build completed without testing" >> $GITHUB_STEP_SUMMARY
+      env:
+        NODE_ENV: production
+
+    - name: 🌐 Extract domain info
+      id: domain-check
+      run: |
+        if [ -f "dist/CNAME" ]; then
+          domain=$(cat dist/CNAME)
+          echo "domain=$domain" >> $GITHUB_OUTPUT
+        fi
+
+    - name: 🔧 Setup GitHub Pages
+      uses: actions/configure-pages@v5
+
+    - name: 📤 Upload deployment artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./dist
+        retention-days: 1
+
+  deploy:
+    name: 🌐 Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: [pre-deploy, build-and-test, quick-build]
+    if: |
+      always() && 
+      needs.pre-deploy.outputs.should-deploy == 'true' && 
+      (needs.build-and-test.outputs.deployment-ready == 'true' || needs.quick-build.outputs.deployment-ready == 'true')
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: 🚀 Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+      with:
+        timeout: 600000 # 10 minute timeout
+
+    - name: 🎉 Post-deployment summary
+      run: |
+        # Determine which build job ran
+        if [ "${{ needs.build-and-test.result }}" == "success" ]; then
+          build_type="Full Build & Test"
+          domain="${{ needs.build-and-test.outputs.domain }}"
+          build_size="${{ needs.build-and-test.outputs.build-size }}"
+        else
+          build_type="Quick Build"
+          domain="${{ needs.quick-build.outputs.domain }}"
+          build_size="N/A"
+        fi
+        
+        echo "## 🎉 Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🌐 Access Your Site" >> $GITHUB_STEP_SUMMARY
+        echo "- **GitHub Pages URL:** ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -n "$domain" ]; then
+          echo "- **Custom Domain:** https://$domain" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Deployment Info" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Type:** $build_type" >> $GITHUB_STEP_SUMMARY
+        echo "- **Bundle Size:** ${build_size}KB" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Deployed:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ✅ Deployment Features" >> $GITHUB_STEP_SUMMARY
+        echo "- 🔒 HTTPS enabled" >> $GITHUB_STEP_SUMMARY
+        echo "- 🌐 Custom domain configured" >> $GITHUB_STEP_SUMMARY
+        echo "- 🤖 SEO optimized (robots.txt, meta tags)" >> $GITHUB_STEP_SUMMARY
+        echo "- ⚡ CDN cached for global performance" >> $GITHUB_STEP_SUMMARY
+
+    - name: 🔍 Verify deployment
+      run: |
+        # Wait a moment for deployment to propagate
+        sleep 10
+        
+        # Check if the site is accessible
+        site_url="${{ steps.deployment.outputs.page_url }}"
+        if curl -s -o /dev/null -w "%{http_code}" "$site_url" | grep -q "200"; then
+          echo "✅ Site is accessible at $site_url" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ Site may take a few minutes to be fully accessible" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  # Notification job for deployment failures
+  deployment-failed:
+    name: ❌ Deployment Failed
+    runs-on: ubuntu-latest
+    needs: [pre-deploy, build-and-test, quick-build, deploy]
+    if: always() && needs.pre-deploy.outputs.should-deploy == 'true' && needs.deploy.result == 'failure'
+
+    steps:
+    - name: 📝 Failure summary
+      run: |
+        echo "## ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "The deployment to GitHub Pages failed. Please check the logs above for details." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔍 Troubleshooting Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Check build logs for compilation errors" >> $GITHUB_STEP_SUMMARY
+        echo "2. Verify all required files are present in dist/" >> $GITHUB_STEP_SUMMARY
+        echo "3. Ensure GitHub Pages is enabled in repository settings" >> $GITHUB_STEP_SUMMARY
+        echo "4. Check if custom domain DNS is configured correctly" >> $GITHUB_STEP_SUMMARY

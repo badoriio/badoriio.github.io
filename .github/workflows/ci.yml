@@ -1,0 +1,360 @@
+name: ✅ CI Pipeline
+
+on:
+  push:
+    branches: [ main, dev ]
+    paths-ignore:
+      - '*.md'
+      - '.gitignore'
+      - '.vscode/**'
+      - 'docs/**'
+  pull_request:
+    branches: [ main, dev ]
+    paths-ignore:
+      - '*.md'
+      - '.gitignore'
+      - '.vscode/**'
+      - 'docs/**'
+
+# Automatically cancel previous runs for the same PR
+concurrency:
+  group: ci-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  # Fast preliminary checks
+  quick-check:
+    name: ⚡ Quick Checks
+    runs-on: ubuntu-latest
+    outputs:
+      should-run-full-ci: ${{ steps.changes.outputs.should-run }}
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1 # Shallow clone for speed
+
+    - name: 🔍 Check for significant changes
+      id: changes
+      run: |
+        # Check if this is a significant change that requires full CI
+        if [[ "${{ github.event_name }}" == "push" ]] || [[ "${{ github.base_ref }}" == "main" ]]; then
+          echo "should-run=true" >> $GITHUB_OUTPUT
+        else
+          # For PRs, check if there are significant code changes
+          git fetch origin ${{ github.base_ref }}
+          changed_files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          if echo "$changed_files" | grep -qE '\.(ts|tsx|js|jsx|json|css)$|package\.json|tsconfig\.json|vite\.config\.ts'; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-run=false" >> $GITHUB_OUTPUT
+          fi
+        fi
+
+  # Primary CI job - runs on latest Node only for speed
+  test:
+    name: 🧪 Test & Lint
+    runs-on: ubuntu-latest
+    needs: quick-check
+    if: needs.quick-check.outputs.should-run-full-ci == 'true'
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+
+    - name: 🗂️ Restore build cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.npm
+          node_modules/.cache
+          .eslintcache
+        key: ci-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/tsconfig.json', 'eslint.config.js') }}
+        restore-keys: |
+          ci-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
+          ci-cache-${{ runner.os }}-
+
+    - name: 📦 Install dependencies
+      run: npm ci --prefer-offline --no-audit --progress=false
+
+    - name: 🔍 TypeScript type check
+      run: npm run type-check
+
+    - name: 🧹 Run linter
+      run: npm run lint:check
+
+    - name: 🧪 Run tests with coverage
+      run: npm run test:ci
+
+    - name: 📊 Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-ci
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+
+  # Compatibility test - runs on older Node version for compatibility check
+  compatibility:
+    name: 🔄 Node 18 Compatibility
+    runs-on: ubuntu-latest
+    needs: [quick-check, test]
+    if: needs.quick-check.outputs.should-run-full-ci == 'true' && github.event_name == 'pull_request'
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: 🔧 Setup Node.js 18.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci --prefer-offline --no-audit --progress=false
+
+    - name: 🔍 TypeScript type check
+      run: npm run type-check
+
+    - name: 🧪 Run tests (no coverage)
+      run: npm test
+
+  build:
+    name: 🏗️ Build & Bundle Analysis
+    runs-on: ubuntu-latest
+    needs: [quick-check, test]
+    if: needs.quick-check.outputs.should-run-full-ci == 'true'
+    outputs:
+      build-size: ${{ steps.size-check.outputs.total-size }}
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: 🗂️ Restore build cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.npm
+          node_modules/.cache
+          dist/.vite
+        key: build-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('src/**/*.ts', 'src/**/*.css', 'vite.config.*') }}
+        restore-keys: |
+          build-cache-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
+          build-cache-${{ runner.os }}-
+
+    - name: 📦 Install dependencies
+      run: npm ci --prefer-offline --no-audit --progress=false
+
+    - name: 🏗️ Build project
+      run: npm run build
+      env:
+        NODE_ENV: production
+
+    - name: 📏 Analyze bundle size
+      id: size-check
+      run: |
+        echo "## 📦 Bundle Size Analysis" >> $GITHUB_STEP_SUMMARY
+        echo "| File | Size | Gzipped | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|------|---------|---------|" >> $GITHUB_STEP_SUMMARY
+        
+        total_size=0
+        # Process JavaScript files
+        if ls dist/assets/*.js 1> /dev/null 2>&1; then
+          for file in dist/assets/*.js; do
+            if [ -f "$file" ]; then
+              # Get file size (cross-platform)
+              if command -v stat >/dev/null; then
+                if stat -c%s "$file" >/dev/null 2>&1; then
+                  size=$(stat -c%s "$file")
+                else
+                  size=$(stat -f%z "$file")
+                fi
+              else
+                size=$(wc -c < "$file")
+              fi
+              
+              gzip_size=$(gzip -c "$file" | wc -c)
+              size_kb=$((size / 1024))
+              gzip_kb=$((gzip_size / 1024))
+              total_size=$((total_size + size))
+              
+              status="✅"
+              if [ $size_kb -gt 250 ]; then status="⚠️"; fi
+              if [ $size_kb -gt 500 ]; then status="❌"; fi
+              
+              echo "| $(basename "$file") | ${size_kb}KB | ${gzip_kb}KB | $status |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+        fi
+        
+        # Process CSS files
+        if ls dist/assets/*.css 1> /dev/null 2>&1; then
+          for file in dist/assets/*.css; do
+            if [ -f "$file" ]; then
+              # Get file size (cross-platform)
+              if command -v stat >/dev/null; then
+                if stat -c%s "$file" >/dev/null 2>&1; then
+                  size=$(stat -c%s "$file")
+                else
+                  size=$(stat -f%z "$file")
+                fi
+              else
+                size=$(wc -c < "$file")
+              fi
+              
+              gzip_size=$(gzip -c "$file" | wc -c)
+              size_kb=$((size / 1024))
+              gzip_kb=$((gzip_size / 1024))
+              total_size=$((total_size + size))
+              
+              status="✅"
+              if [ $size_kb -gt 50 ]; then status="⚠️"; fi
+              if [ $size_kb -gt 100 ]; then status="❌"; fi
+              
+              echo "| $(basename "$file") | ${size_kb}KB | ${gzip_kb}KB | $status |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+        fi
+        
+        total_kb=$((total_size / 1024))
+        echo "total-size=${total_kb}" >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Total Bundle Size: ${total_kb}KB** $([ $total_kb -le 500 ] && echo "✅" || echo "⚠️")" >> $GITHUB_STEP_SUMMARY
+
+    - name: 📤 Upload build artifacts
+      if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-files-${{ github.sha }}
+        path: dist/
+        retention-days: 3
+        if-no-files-found: error
+
+  # Quality gates - run in parallel for PR review
+  quality-gates:
+    name: 🔍 Quality Gates
+    runs-on: ubuntu-latest
+    needs: [quick-check, build]
+    if: needs.quick-check.outputs.should-run-full-ci == 'true' && github.event_name == 'pull_request'
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci --prefer-offline --no-audit --progress=false
+
+    - name: 📥 Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-files-${{ github.sha }}
+        path: dist/
+
+    - name: 🔍 Run Lighthouse CI
+      uses: treosh/lighthouse-ci-action@v12
+      with:
+        configPath: '.lighthouserc.json'
+        uploadArtifacts: true
+        temporaryPublicStorage: true
+      continue-on-error: true
+
+    - name: 🔒 Security audit
+      run: |
+        echo "## 🔒 Security Audit Results" >> $GITHUB_STEP_SUMMARY
+        if npm audit --audit-level high --json > audit.json 2>/dev/null; then
+          echo "✅ No high-severity vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ Security vulnerabilities detected:" >> $GITHUB_STEP_SUMMARY
+          npm audit --audit-level high || true
+        fi
+
+    - name: 📊 Bundle size check
+      run: |
+        bundle_size="${{ needs.build.outputs.build-size }}"
+        echo "## 📊 Performance Budget Check" >> $GITHUB_STEP_SUMMARY
+        echo "Current bundle size: **${bundle_size}KB**" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "$bundle_size" -le 400 ]; then
+          echo "✅ Within optimal budget (≤400KB)" >> $GITHUB_STEP_SUMMARY
+        elif [ "$bundle_size" -le 500 ]; then
+          echo "⚠️ Within acceptable budget (≤500KB)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Exceeds performance budget (>500KB)" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+
+  # Summary job for PR status checks
+  ci-success:
+    name: ✅ CI Success
+    runs-on: ubuntu-latest
+    needs: [quick-check, test, build, compatibility, quality-gates]
+    if: always() && needs.quick-check.outputs.should-run-full-ci == 'true'
+
+    steps:
+    - name: 📊 Check CI results
+      run: |
+        # Check if all required jobs passed
+        test_result="${{ needs.test.result }}"
+        build_result="${{ needs.build.result }}"
+        
+        echo "## 🎯 CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Tests & Linting | ${{ needs.test.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Build | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Node 18 Compatibility | ${{ needs.compatibility.result == 'success' && '✅' || needs.compatibility.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Quality Gates | ${{ needs.quality-gates.result == 'success' && '✅' || needs.quality-gates.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "$test_result" != "success" || "$build_result" != "success" ]]; then
+          echo "❌ CI Pipeline failed" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        else
+          echo "✅ CI Pipeline passed successfully" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  # Skip job for when CI is not needed
+  ci-skipped:
+    name: ⏭️ CI Skipped
+    runs-on: ubuntu-latest
+    needs: quick-check
+    if: needs.quick-check.outputs.should-run-full-ci == 'false'
+
+    steps:
+    - name: 📝 Skip message
+      run: |
+        echo "## ⏭️ CI Pipeline Skipped" >> $GITHUB_STEP_SUMMARY
+        echo "No significant code changes detected. CI pipeline skipped for performance." >> $GITHUB_STEP_SUMMARY
+        echo "Changed files only include documentation, configuration, or other non-code files." >> $GITHUB_STEP_SUMMARY

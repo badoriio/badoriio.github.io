@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Badori.io - Terminal</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+    <div class="terminal">
+        <div class="terminal-header">
+            <div class="terminal-buttons">
+                <div class="terminal-button close"></div>
+                <div class="terminal-button minimize"></div>
+                <div class="terminal-button maximize"></div>
+            </div>
+            <div class="terminal-title">badoriio@terminal:~</div>
+        </div>
+        
+        <div class="terminal-content">
+            
+            <div class="ascii-art">
+██████╗  █████╗ ██████╗  ██████╗ ██████╗ ██╗██╗ ██████╗ 
+██╔══██╗██╔══██╗██╔══██╗██╔═══██╗██╔══██╗██║██║██╔═══██╗
+██████╔╝███████║██║  ██║██║   ██║██████╔╝██║██║██║   ██║
+██╔══██╗██╔══██║██║  ██║██║   ██║██╔══██╗██║██║██║   ██║
+██████╔╝██║  ██║██████╔╝╚██████╔╝██║  ██║██║██║╚██████╔╝
+╚═════╝ ╚═╝  ╚═╝╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝ ╚═════╝
+            </div>
+            
+            
+            
+            <div style="margin-top: 20px; margin-bottom: 15px;">
+                <div class="output info">Type 'help' to see available commands</div>
+            </div>
+            
+            <div class="command-line interactive-line">
+                <span class="prompt">user@badori.io:~$</span>
+                <span class="user-input" id="userInput"><span class="cursor"></span></span>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="src/App.ts"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Badori.io - Terminal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="terminal">
+        <div class="terminal-header">
+            <div class="terminal-buttons">
+                <div class="terminal-button close"></div>
+                <div class="terminal-button minimize"></div>
+                <div class="terminal-button maximize"></div>
+            </div>
+            <div class="terminal-title">badori@terminal:~</div>
+        </div>
+        
+        <div class="terminal-content">
+            <div class="command-line">
+                <span class="prompt">me@badori.io:~$</span>
+                <span class="command">cat welcome.txt</span>
+            </div>
+            
+            <div class="ascii-art">
+██████╗  █████╗ ██████╗  ██████╗ ██████╗ ██╗    ██╗ ██████╗ 
+██╔══██╗██╔══██╗██╔══██╗██╔═══██╗██╔══██╗██║    ██║██╔═══██╗
+██████╔╝███████║██║  ██║██║   ██║██████╔╝██║    ██║██║   ██║
+██╔══██╗██╔══██║██║  ██║██║   ██║██╔══██╗██║    ██║██║   ██║
+██████╔╝██║  ██║██████╔╝╚██████╔╝██║  ██║██║ ██╗██║╚██████╔╝
+╚═════╝ ╚═╝  ╚═╝╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝ ╚═╝╚═╝ ╚═════╝
+            </div>
+            
+            <div class="command-line">
+                <span class="prompt">me@badori.io:~$</span>
+                <span class="command">systemctl status website</span>
+            </div>
+            <div class="output warning">● website.service - Badori.io Web Service</div>
+            <div class="output warning">   Loaded: loaded (/etc/systemd/system/website.service; enabled)</div>
+            <div class="output warning">   Active: inactive (maintenance mode)</div>
+            <div class="output warning">   Status: "Under heavy development..."</div>
+            
+            <div class="command-line">
+                <span class="prompt">me@badori.io:~$</span>
+                <span class="command">tail -f deployment.log</span>
+            </div>
+            <div class="output info">[INFO] Initializing new architecture...</div>
+            <div class="output info">[INFO] Loading advanced features...</div>
+            <div class="output info">[INFO] Optimizing performance...</div>
+            <div class="output success">[SUCCESS] Core systems operational</div>
+            
+            <div class="loading">
+                <span class="loading-text">[DEPLOYING]</span>
+                <div class="loading-bar">
+                    <div class="loading-progress"></div>
+                </div>
+                <span class="info">78%</span>
+            </div>
+            
+            <div class="command-line">
+                <span class="prompt">me@badori.io:~$</span>
+                <span class="command">echo "Coming soon..."</span>
+            </div>
+            <div class="output success">Something incredible is being crafted in the digital forge.</div>
+            <div class="output success">Revolutionary features incoming...</div>
+            
+            <div class="contact-info">
+                <div class="command-line">
+                    <span class="prompt">me@badori.io:~$</span>
+                    <span class="command">ls contacts/</span>
+                </div>
+                <div class="social-links">
+                    <a href="mailto:contact@badori.io" class="social-link">email.txt</a>
+                    <a href="#" class="social-link">twitter.sh</a>
+                    <a href="#" class="social-link">linkedin.md</a>
+                    <a href="#" class="social-link">github.git</a>
+                </div>
+            </div>
+            
+            <div class="command-line" style="margin-top: 30px;">
+                <span class="prompt">me@badori.io:~$</span>
+                <span class="cursor"></span>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

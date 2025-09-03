@@ -14,26 +14,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }, speed);
     }
 
-    // Simulate random loading percentage updates
-    function updateLoadingPercentage() {
-        const percentageElement = document.querySelector('.loading .info');
-        if (percentageElement) {
-            const percentages = ['78%', '82%', '89%', '94%', '97%'];
-            let currentIndex = 0;
-            
-            setInterval(() => {
-                percentageElement.textContent = percentages[currentIndex];
-                currentIndex = (currentIndex + 1) % percentages.length;
-            }, 4000);
-        }
-    }
 
 
-    // Terminal buttons (no functionality, just visual)
-    function setupTerminalButtons() {
-        // Buttons are now purely visual elements
-        // No click handlers attached
-    }
 
     // Mobile-specific optimizations
     function setupMobileOptimizations() {
@@ -51,13 +33,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Optimize matrix rain for mobile
-        if (window.innerWidth <= 768) {
-            const canvas = document.getElementById('matrix-bg');
-            if (canvas) {
-                canvas.style.opacity = '0.02'; // Reduce opacity for better performance
-            }
-        }
 
         // Handle orientation change
         window.addEventListener('orientationchange', () => {
@@ -122,7 +97,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        setInterval(draw, 100);
+        // Optimize for mobile performance
+        const fps = window.innerWidth <= 768 ? 150 : 100;
+        setInterval(draw, fps);
     }
 
     // Interactive terminal input
@@ -266,8 +243,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Initialize all functions
-    updateLoadingPercentage();
-    setupTerminalButtons();
     setupMobileOptimizations();
     setupInteractiveTerminal();
     makeDraggable();

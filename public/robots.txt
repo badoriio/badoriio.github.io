@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Custom domain: badori.io
+Sitemap: https://badori.io/sitemap.xml

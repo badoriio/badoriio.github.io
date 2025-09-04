@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+.vite/
+.cache/
+*.min.js
+*.min.css
+coverage/
+.husky/

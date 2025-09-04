@@ -1,0 +1,24 @@
+#!/bin/sh
+# Conventional commit message format validation
+# Pattern: type(scope): subject
+# Examples: 
+#   feat: add new feature
+#   fix(api): resolve authentication issue
+#   docs: update README
+
+commit_regex='^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .{1,50}'
+
+if ! grep -qE "$commit_regex" "$1"; then
+    echo "❌ Invalid commit message format!"
+    echo ""
+    echo "Commit messages must follow conventional commits format:"
+    echo "  type(scope): subject"
+    echo ""
+    echo "Types: feat, fix, docs, style, refactor, test, chore"
+    echo "Examples:"
+    echo "  feat: add new feature"
+    echo "  fix(api): resolve authentication issue"
+    echo "  docs: update README"
+    echo ""
+    exit 1
+fi

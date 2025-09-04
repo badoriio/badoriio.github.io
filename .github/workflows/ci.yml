@@ -1,103 +1,210 @@
-name: CI
+name: ✅ CI Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, dev ]
+
+# Automatically cancel previous runs for the same PR
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
-    name: Test & Lint
+    name: 🧪 Test & Lint
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         node-version: [18.x, 20.x]
 
     steps:
-    - name: Checkout code
+    - name: 📥 Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
-    - name: Setup Node.js ${{ matrix.node-version }}
+    - name: 🔧 Setup Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+        cache-dependency-path: package-lock.json
 
-    - name: Install dependencies
-      run: npm ci
+    - name: 🗂️ Cache TypeScript build
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.npm
+          node_modules/.cache
+          .eslintcache
+        key: ts-build-${{ runner.os }}-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/tsconfig.json') }}
+        restore-keys: |
+          ts-build-${{ runner.os }}-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}-
+          ts-build-${{ runner.os }}-${{ matrix.node-version }}-
 
-    - name: Run TypeScript type check
+    - name: 📦 Install dependencies
+      run: npm ci --prefer-offline --no-audit
+
+    - name: 🔍 TypeScript type check
       run: npm run type-check
 
-    - name: Run linter
+    - name: 🧹 Run linter
       run: npm run lint:check
 
-    - name: Run tests
+    - name: 🧪 Run tests
       run: npm run test:ci
 
-    - name: Upload coverage reports
+    - name: 📊 Upload coverage (Node 20.x only)
       if: matrix.node-version == '20.x'
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage/lcov.info
         flags: unittests
-        name: codecov-umbrella
+        name: codecov-umbrella-node-${{ matrix.node-version }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
 
   build:
-    name: Build
+    name: 🏗️ Build
     runs-on: ubuntu-latest
     needs: test
 
     steps:
-    - name: Checkout code
+    - name: 📥 Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
+    - name: 🔧 Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
         cache: 'npm'
+        cache-dependency-path: package-lock.json
 
-    - name: Install dependencies
-      run: npm ci
+    - name: 🗂️ Cache build dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.npm
+          node_modules/.cache
+          dist/.vite
+        key: build-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('src/**/*.ts', 'src/**/*.css', 'vite.config.*') }}
+        restore-keys: |
+          build-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
+          build-${{ runner.os }}-
 
-    - name: Build project
+    - name: 📦 Install dependencies
+      run: npm ci --prefer-offline --no-audit
+
+    - name: 🏗️ Build project
       run: npm run build
+      env:
+        NODE_ENV: production
 
-    - name: Upload build artifacts
+    - name: 📤 Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: build-files
+        name: build-files-${{ github.sha }}
         path: dist/
-        retention-days: 1
+        retention-days: 7
+        if-no-files-found: error
 
   lighthouse:
-    name: Lighthouse CI
+    name: 🔍 Lighthouse Audit
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'pull_request'
 
     steps:
-    - name: Checkout code
+    - name: 📥 Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
+    - name: 📥 Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-files-${{ github.sha }}
+        path: dist/
+
+    - name: 🔧 Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
         cache: 'npm'
 
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Build project
-      run: npm run build
-
-    - name: Run Lighthouse CI
-      uses: treosh/lighthouse-ci-action@v11
+    - name: 🔍 Run Lighthouse CI
+      uses: treosh/lighthouse-ci-action@v12
       with:
         configPath: '.lighthouserc.json'
         uploadArtifacts: true
         temporaryPublicStorage: true
+      continue-on-error: true
+
+  security-scan:
+    name: 🔒 Security Scan  
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔍 Run npm audit
+      run: npm audit --audit-level high
+
+    - name: 🔍 Run Snyk security scan
+      uses: snyk/actions/node@master
+      continue-on-error: true
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  performance-budget:
+    name: 📊 Performance Budget
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: 📥 Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-files-${{ github.sha }}
+        path: dist/
+
+    - name: 📏 Check bundle size
+      run: |
+        echo "## Bundle Size Analysis 📦" >> $GITHUB_STEP_SUMMARY
+        echo "| File | Size | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|------|--------|" >> $GITHUB_STEP_SUMMARY
+        
+        total_js_size=0
+        total_css_size=0
+        
+        for file in dist/*.js; do
+          if [ -f "$file" ]; then
+            size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file")
+            size_kb=$((size / 1024))
+            total_js_size=$((total_js_size + size))
+            status="✅"
+            if [ $size_kb -gt 250 ]; then status="⚠️"; fi
+            if [ $size_kb -gt 500 ]; then status="❌"; fi
+            echo "| $(basename "$file") | ${size_kb}KB | $status |" >> $GITHUB_STEP_SUMMARY
+          fi
+        done
+        
+        for file in dist/*.css; do
+          if [ -f "$file" ]; then
+            size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file")
+            size_kb=$((size / 1024))
+            total_css_size=$((total_css_size + size))
+            status="✅"
+            if [ $size_kb -gt 50 ]; then status="⚠️"; fi
+            if [ $size_kb -gt 100 ]; then status="❌"; fi
+            echo "| $(basename "$file") | ${size_kb}KB | $status |" >> $GITHUB_STEP_SUMMARY
+          fi
+        done
+        
+        total_kb=$(((total_js_size + total_css_size) / 1024))
+        echo "| **Total Bundle** | **${total_kb}KB** | $([ $total_kb -le 500 ] && echo "✅" || echo "⚠️") |" >> $GITHUB_STEP_SUMMARY

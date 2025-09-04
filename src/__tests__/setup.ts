@@ -6,7 +6,7 @@ import '@testing-library/jest-dom';
 // Mock DOM APIs that aren't available in Jest's JSDOM environment
 Object.defineProperty(window, 'matchMedia', {
     writable: true,
-    value: jest.fn().mockImplementation((query) => ({
+    value: jest.fn().mockImplementation(query => ({
         matches: false,
         media: query,
         onchange: null,
@@ -33,7 +33,7 @@ global.IntersectionObserver = jest.fn().mockImplementation(() => ({
 }));
 
 // Mock Canvas API
-HTMLCanvasElement.prototype.getContext = jest.fn().mockImplementation((contextType) => {
+HTMLCanvasElement.prototype.getContext = jest.fn().mockImplementation(contextType => {
     if (contextType === '2d') {
         return {
             fillStyle: '',
@@ -53,7 +53,7 @@ HTMLCanvasElement.prototype.getContext = jest.fn().mockImplementation((contextTy
 });
 
 // Mock window.requestAnimationFrame
-global.requestAnimationFrame = jest.fn((cb) => setTimeout(cb, 0));
+global.requestAnimationFrame = jest.fn(cb => setTimeout(cb, 0));
 global.cancelAnimationFrame = jest.fn();
 
 // Mock window location

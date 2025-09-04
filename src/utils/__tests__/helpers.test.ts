@@ -150,7 +150,7 @@ describe('Helper Functions', () => {
             prompt1.className = 'prompt';
             const prompt2 = document.createElement('span');
             prompt2.className = 'prompt';
-            
+
             document.body.appendChild(prompt1);
             document.body.appendChild(prompt2);
 
@@ -196,7 +196,7 @@ describe('Helper Functions', () => {
             document.querySelectorAll = jest.fn().mockReturnValue([
                 promptElement,
                 { nodeType: 3 }, // Text node
-            ] as any);
+            ]) as any;
 
             expect(() => updatePrompts('test-user')).not.toThrow();
             expect(promptElement.textContent).toBe('test-user@badori.io:~$');

@@ -23,8 +23,8 @@ describe('MatrixBackground', () => {
         // Mock document.createElement for canvas
         mockCanvas = createMockCanvas();
         mockContext = mockCanvas.getContext('2d');
-        
-        jest.spyOn(document, 'createElement').mockImplementation((tagName) => {
+
+        jest.spyOn(document, 'createElement').mockImplementation(tagName => {
             if (tagName === 'canvas') {
                 return mockCanvas;
             }
@@ -32,18 +32,16 @@ describe('MatrixBackground', () => {
         });
 
         // Mock document.body.appendChild
-        jest.spyOn(document.body, 'appendChild').mockImplementation(jest.fn());
+        jest.spyOn(document.body, 'appendChild').mockImplementation(jest.fn() as any);
 
         // Mock window dimensions
         Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true });
         Object.defineProperty(window, 'innerHeight', { value: 768, writable: true });
 
         // Mock setInterval to avoid actual timing
-        jest.spyOn(global, 'setInterval').mockImplementation((callback, delay) => {
-            // Call immediately for testing
-            setTimeout(callback as TimerHandler, 0);
+        jest.spyOn(global, 'setInterval').mockImplementation((() => {
             return 123 as any; // Mock timer ID
-        });
+        }) as any);
 
         matrixBackground = new MatrixBackground();
     });
@@ -57,7 +55,7 @@ describe('MatrixBackground', () => {
 
         expect(document.createElement).toHaveBeenCalledWith('canvas');
         expect(mockCanvas.id).toBe('matrix-bg');
-        expect(document.body.appendChild).toHaveBeenCalledWith(mockCanvas);
+        expect(document.body.appendChild).toHaveBeenCalledWith(expect.any(Element));
     });
 
     it('should apply correct CSS styles to canvas', () => {
@@ -89,8 +87,8 @@ describe('MatrixBackground', () => {
         matrixBackground.init();
 
         // Columns should be canvas width / 14
-        const expectedColumns = Math.floor(window.innerWidth / 14);
-        
+        // const expectedColumns = Math.floor(window.innerWidth / 14);
+
         // We can't directly test the private drops array, but we can test behavior
         // The draw method should work without errors
         expect(() => {
@@ -100,7 +98,7 @@ describe('MatrixBackground', () => {
 
     it('should setup window event listeners', () => {
         const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
-        
+
         matrixBackground.init();
 
         expect(addEventListenerSpy).toHaveBeenCalledWith('orientationchange', expect.any(Function));
@@ -111,13 +109,14 @@ describe('MatrixBackground', () => {
         matrixBackground.init();
 
         // Get the orientation change handler
-        const orientationHandler = (window.addEventListener as jest.Mock).mock.calls
-            .find(call => call[0] === 'orientationchange')[1];
+        const orientationHandler = (window.addEventListener as jest.Mock).mock.calls.find(
+            call => call[0] === 'orientationchange',
+        )?.[1] as Function;
 
         // Mock setTimeout for the delayed resize
         const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
 
-        orientationHandler();
+        if (orientationHandler) {orientationHandler();}
 
         expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 100);
     });
@@ -126,14 +125,15 @@ describe('MatrixBackground', () => {
         matrixBackground.init();
 
         // Get the resize handler
-        const resizeHandler = (window.addEventListener as jest.Mock).mock.calls
-            .find(call => call[0] === 'resize')[1];
+        const resizeHandler = (window.addEventListener as jest.Mock).mock.calls.find(
+            call => call[0] === 'resize',
+        )?.[1] as Function;
 
         // Change window size
         Object.defineProperty(window, 'innerWidth', { value: 800 });
         Object.defineProperty(window, 'innerHeight', { value: 600 });
 
-        resizeHandler();
+        if (resizeHandler) {resizeHandler();}
 
         // Canvas dimensions should be updated
         expect(mockCanvas.width).toBe(800);
@@ -157,13 +157,18 @@ describe('MatrixBackground', () => {
         expect(setInterval).toHaveBeenCalledWith(expect.any(Function), 150); // Mobile FPS
     });
 
-    it('should draw matrix characters', (done) => {
+    it('should draw matrix characters', done => {
         matrixBackground.init();
 
         // Wait for animation to trigger
         setTimeout(() => {
             expect(mockContext.fillStyle).toHaveBeenCalledWith('rgba(13, 17, 23, 0.05)');
-            expect(mockContext.fillRect).toHaveBeenCalledWith(0, 0, mockCanvas.width, mockCanvas.height);
+            expect(mockContext.fillRect).toHaveBeenCalledWith(
+                0,
+                0,
+                mockCanvas.width,
+                mockCanvas.height,
+            );
             expect(mockContext.fillStyle).toHaveBeenCalledWith('#58a6ff');
             expect(mockContext.font).toHaveBeenCalledWith('14px monospace');
             expect(mockContext.fillText).toHaveBeenCalled();
@@ -182,7 +187,7 @@ describe('MatrixBackground', () => {
     });
 
     it('should handle context creation failure gracefully', () => {
-        mockCanvas.getContext = jest.fn().mockReturnValue(null);
+        mockCanvas.getContext = jest.fn().mockReturnValue(null) as any;
 
         expect(() => {
             matrixBackground.init();

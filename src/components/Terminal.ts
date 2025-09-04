@@ -5,7 +5,20 @@ import { COMMANDS } from '../utils/constants.js';
 import { DragHandler } from './DragHandler.js';
 
 export class Terminal {
-    constructor(prompt) {
+    prompt: string;
+    currentInput: string;
+    cursorPosition: number;
+    commandHistory: string[];
+    historyIndex: number;
+    terminalHasFocus: boolean;
+    dragHandler: any;
+    commands: any;
+    userInput: HTMLElement | null = null;
+    terminalContent: HTMLElement | null = null;
+    interactiveLine: HTMLElement | null = null;
+    terminal: HTMLElement | null = null;
+
+    constructor(prompt: string) {
         this.prompt = prompt;
         this.currentInput = '';
         this.cursorPosition = 0;
@@ -35,49 +48,63 @@ export class Terminal {
 
     setupDragging() {
         const header = document.querySelector('.terminal-header');
-        this.dragHandler = new DragHandler(this.terminal, header);
+        if (this.terminal && header) {
+            this.dragHandler = new DragHandler(this.terminal, header as HTMLElement);
+        }
     }
 
     removeCSSTransitions() {
-        this.terminal.style.transition = 'none';
+        if (this.terminal) {
+            this.terminal.style.transition = 'none';
+        }
     }
 
     setupEventListeners() {
-        document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        document.addEventListener('keydown', e => this.handleKeyDown(e));
     }
 
     setupFocusManagement() {
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.terminal')) {
-                this.setFocus('terminal');
-                return;
-            }
-
-            const gameContainer = document.getElementById('gameContainer');
-            if (gameContainer && e.target.closest('#gameContainer')) {
-                if (!e.target.closest('#closeGame')) {
-                    this.setFocus('game');
+        document.addEventListener(
+            'click',
+            e => {
+                if (e.target && (e.target as Element).closest('.terminal')) {
+                    this.setFocus('terminal');
+                    return;
                 }
-            }
-        }, true);
+
+                const gameContainer = document.getElementById('gameContainer');
+                if (gameContainer && e.target && (e.target as Element).closest('#gameContainer')) {
+                    if (e.target && !(e.target as Element).closest('#closeGame')) {
+                        this.setFocus('game');
+                    }
+                }
+            },
+            true,
+        );
 
         document.body.focus();
         document.body.setAttribute('tabindex', '0');
 
-        document.addEventListener('keydown', (e) => {
+        document.addEventListener('keydown', e => {
             if (e.key === 'Tab') {
                 e.preventDefault();
             }
         });
     }
 
-    setFocus(target) {
+    setTerminalFocus(hasFocus: boolean) {
+        this.terminalHasFocus = hasFocus;
+    }
+
+    setFocus(target: string) {
         const gameContainer = document.getElementById('gameContainer');
 
         if (target === 'terminal') {
             this.terminalHasFocus = true;
             document.body.focus();
-            this.terminal.style.boxShadow = '0 0 10px #58a6ff';
+            if (this.terminal) {
+                this.terminal.style.boxShadow = '0 0 10px #58a6ff';
+            }
             if (gameContainer) {
                 gameContainer.blur();
                 gameContainer.style.boxShadow = 'none';
@@ -86,12 +113,16 @@ export class Terminal {
             this.terminalHasFocus = false;
             gameContainer.focus();
             gameContainer.style.boxShadow = '0 0 10px #58a6ff';
-            this.terminal.style.boxShadow = 'none';
+            if (this.terminal) {
+                this.terminal.style.boxShadow = 'none';
+            }
         }
     }
 
-    handleKeyDown(e) {
-        if (!this.terminalHasFocus) {return;}
+    handleKeyDown(e: KeyboardEvent) {
+        if (!this.terminalHasFocus) {
+            return;
+        }
 
         switch (e.key) {
             case 'Enter':
@@ -156,18 +187,22 @@ export class Terminal {
         this.scrollToBottom();
     }
 
-    addCommandLine(command) {
+    addCommandLine(command: string) {
         const newCommandLine = document.createElement('div');
         newCommandLine.className = 'command-line';
         newCommandLine.innerHTML = `
             <span class="prompt">${this.prompt}</span>
             <span class="command">${command}</span>
         `;
-        this.terminalContent.insertBefore(newCommandLine, this.interactiveLine);
+        if (this.terminalContent && this.interactiveLine) {
+            this.terminalContent.insertBefore(newCommandLine, this.interactiveLine);
+        }
     }
 
-    processCommand(command) {
-        if (command === '') {return;}
+    processCommand(command: string) {
+        if (command === '') {
+            return;
+        }
 
         if (this.commands[command]) {
             this.handleBuiltInCommand(command);
@@ -176,7 +211,7 @@ export class Terminal {
         }
     }
 
-    handleBuiltInCommand(command) {
+    handleBuiltInCommand(command: string) {
         if (command === 'clear') {
             this.clearScreen();
             return;
@@ -195,34 +230,47 @@ export class Terminal {
 
         const output = document.createElement('div');
         output.className = 'output success';
-        const response = typeof this.commands[command] === 'function' ? this.commands[command]() : this.commands[command];
+        const response =
+            typeof this.commands[command] === 'function'
+                ? this.commands[command]()
+                : this.commands[command];
         output.innerHTML = response.replace(/\n/g, '<br>');
-        this.terminalContent.insertBefore(output, this.interactiveLine);
+        if (this.terminalContent && this.interactiveLine) {
+            this.terminalContent.insertBefore(output, this.interactiveLine);
+        }
     }
 
-    showCommandNotFound(command) {
+    showCommandNotFound(command: string) {
         const output = document.createElement('div');
         output.className = 'output';
         output.style.color = '#f85149';
         output.textContent = `bash: ${command}: command not found`;
-        this.terminalContent.insertBefore(output, this.interactiveLine);
+        if (this.terminalContent && this.interactiveLine) {
+            this.terminalContent.insertBefore(output, this.interactiveLine);
+        }
     }
 
     clearScreen() {
-        this.terminalContent.innerHTML = '';
-        this.terminalContent.appendChild(this.interactiveLine);
+        if (this.terminalContent && this.interactiveLine) {
+            this.terminalContent.innerHTML = '';
+            this.terminalContent.appendChild(this.interactiveLine);
+        }
     }
 
-    navigateHistory(direction) {
-        if (this.commandHistory.length === 0) {return;}
+    navigateHistory(direction: number) {
+        if (this.commandHistory.length === 0) {
+            return;
+        }
 
-        if (direction === -1) { // Up arrow
+        if (direction === -1) {
+            // Up arrow
             if (this.historyIndex === -1) {
                 this.historyIndex = this.commandHistory.length - 1;
             } else if (this.historyIndex > 0) {
                 this.historyIndex--;
             }
-        } else { // Down arrow
+        } else {
+            // Down arrow
             if (this.historyIndex !== -1) {
                 if (this.historyIndex < this.commandHistory.length - 1) {
                     this.historyIndex++;
@@ -245,7 +293,9 @@ export class Terminal {
 
     handleBackspace() {
         if (this.cursorPosition > 0) {
-            this.currentInput = this.currentInput.slice(0, this.cursorPosition - 1) + this.currentInput.slice(this.cursorPosition);
+            this.currentInput =
+                this.currentInput.slice(0, this.cursorPosition - 1) +
+                this.currentInput.slice(this.cursorPosition);
             this.cursorPosition--;
             this.updateDisplay();
         }
@@ -253,12 +303,14 @@ export class Terminal {
 
     handleDelete() {
         if (this.cursorPosition < this.currentInput.length) {
-            this.currentInput = this.currentInput.slice(0, this.cursorPosition) + this.currentInput.slice(this.cursorPosition + 1);
+            this.currentInput =
+                this.currentInput.slice(0, this.cursorPosition) +
+                this.currentInput.slice(this.cursorPosition + 1);
             this.updateDisplay();
         }
     }
 
-    moveCursor(direction) {
+    moveCursor(direction: number) {
         const newPosition = this.cursorPosition + direction;
         if (newPosition >= 0 && newPosition <= this.currentInput.length) {
             this.cursorPosition = newPosition;
@@ -266,14 +318,17 @@ export class Terminal {
         }
     }
 
-    insertCharacter(char) {
-        this.currentInput = this.currentInput.slice(0, this.cursorPosition) + char + this.currentInput.slice(this.cursorPosition);
+    insertCharacter(char: string) {
+        this.currentInput =
+            this.currentInput.slice(0, this.cursorPosition) +
+            char +
+            this.currentInput.slice(this.cursorPosition);
         this.cursorPosition++;
         this.historyIndex = -1;
         this.updateDisplay();
     }
 
-    handleControlKey(e) {
+    handleControlKey(e: KeyboardEvent) {
         if (e.key === 'c') {
             this.handleCtrlC();
             e.preventDefault();
@@ -290,7 +345,9 @@ export class Terminal {
             <span class="prompt">${this.prompt}</span>
             <span class="command">${this.currentInput}^C</span>
         `;
-        this.terminalContent.insertBefore(cancelLine, this.interactiveLine);
+        if (this.terminalContent && this.interactiveLine) {
+            this.terminalContent.insertBefore(cancelLine, this.interactiveLine);
+        }
 
         this.resetInput();
         this.scrollToBottom();
@@ -309,7 +366,9 @@ export class Terminal {
             output.className = 'output';
             output.style.color = '#7c3aed';
             output.textContent = matches.join('  ');
-            this.terminalContent.insertBefore(output, this.interactiveLine);
+            if (this.terminalContent && this.interactiveLine) {
+                this.terminalContent.insertBefore(output, this.interactiveLine);
+            }
             this.scrollToBottom();
         }
     }
@@ -318,7 +377,9 @@ export class Terminal {
         const beforeCursor = this.currentInput.slice(0, this.cursorPosition);
         const afterCursor = this.currentInput.slice(this.cursorPosition);
 
-        this.userInput.innerHTML = beforeCursor + '<span class="cursor"></span>' + afterCursor;
+        if (this.userInput) {
+            this.userInput.innerHTML = beforeCursor + '<span class="cursor"></span>' + afterCursor;
+        }
     }
 
     resetInput() {
@@ -329,7 +390,9 @@ export class Terminal {
     }
 
     scrollToBottom() {
-        this.interactiveLine.scrollIntoView({ behavior: 'smooth' });
+        if (this.interactiveLine) {
+            this.interactiveLine.scrollIntoView({ behavior: 'smooth' });
+        }
     }
 
     destroy() {

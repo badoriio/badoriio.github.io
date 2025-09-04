@@ -32,12 +32,18 @@ export class MatrixBackground {
     }
 
     setupCanvas() {
+        if (!this.canvas) {
+            return;
+        }
         this.ctx = this.canvas.getContext('2d');
         this.resizeCanvas();
         this.initializeDrops();
     }
 
     resizeCanvas() {
+        if (!this.canvas) {
+            return;
+        }
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         this.columns = this.canvas.width / 14;
@@ -52,6 +58,9 @@ export class MatrixBackground {
     }
 
     draw() {
+        if (!this.ctx || !this.canvas) {
+            return;
+        }
         this.ctx.fillStyle = 'rgba(13, 17, 23, 0.05)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -59,7 +68,8 @@ export class MatrixBackground {
         this.ctx.font = '14px monospace';
 
         for (let i = 0; i < this.drops.length; i++) {
-            const text = CONFIG.CHARS.MATRIX[Math.floor(Math.random() * CONFIG.CHARS.MATRIX.length)];
+            const text =
+                CONFIG.CHARS.MATRIX[Math.floor(Math.random() * CONFIG.CHARS.MATRIX.length)];
             this.ctx.fillText(text, i * 14, this.drops[i] * 14);
 
             if (this.drops[i] * 14 > this.canvas.height && Math.random() > 0.975) {
@@ -70,7 +80,10 @@ export class MatrixBackground {
     }
 
     startAnimation() {
-        const fps = window.innerWidth <= CONFIG.BREAKPOINTS.MOBILE ? CONFIG.TERMINAL.FPS_MOBILE : CONFIG.TERMINAL.FPS_DESKTOP;
+        const fps =
+            window.innerWidth <= CONFIG.BREAKPOINTS.MOBILE
+                ? CONFIG.TERMINAL.FPS_MOBILE
+                : CONFIG.TERMINAL.FPS_DESKTOP;
         setInterval(() => this.draw(), fps);
     }
 

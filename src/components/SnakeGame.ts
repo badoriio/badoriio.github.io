@@ -5,6 +5,21 @@ import { CONFIG } from '../utils/constants.js';
 import { DragHandler } from './DragHandler.js';
 
 export class SnakeGame {
+    gameContainer: HTMLElement | null;
+    canvas: HTMLCanvasElement | null;
+    ctx: CanvasRenderingContext2D | null;
+    scoreElement: HTMLElement | null;
+    dragHandler: any;
+    snake: Array<{ x: number; y: number }>;
+    food: { x: number; y: number };
+    dx: number;
+    dy: number;
+    score: number;
+    gameInterval: any;
+    gameHasFocus: boolean;
+    gridSize: number;
+    tileCount: number;
+
     constructor() {
         this.gameContainer = null;
         this.canvas = null;
@@ -121,7 +136,10 @@ export class SnakeGame {
     }
 
     setupCanvas() {
-        this.canvas = document.getElementById('gameCanvas');
+        this.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+        if (!this.canvas) {
+            return;
+        }
         this.ctx = this.canvas.getContext('2d');
         this.scoreElement = document.getElementById('gameScore');
         this.tileCount = this.canvas.width / this.gridSize;
@@ -129,23 +147,33 @@ export class SnakeGame {
 
     setupDragging() {
         const gameHeader = document.getElementById('gameHeader');
-        this.dragHandler = new DragHandler(this.gameContainer, gameHeader);
+        if (this.gameContainer && gameHeader) {
+            this.dragHandler = new DragHandler(this.gameContainer, gameHeader);
+        }
     }
 
     setupEventListeners() {
-        document.addEventListener('keydown', (e) => this.handleKeyDown(e));
-        document.getElementById('closeGame').addEventListener('click', () => this.close());
+        document.addEventListener('keydown', e => this.handleKeyDown(e));
+        const closeButton = document.getElementById('closeGame');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => this.close());
+        }
     }
 
     setupFocusHandling() {
+        if (!this.gameContainer) {
+            return;
+        }
         this.gameContainer.setAttribute('tabindex', '0');
         this.gameContainer.style.outline = 'none';
 
         this.gameContainer.addEventListener('focus', () => {
             this.gameHasFocus = true;
-            this.gameContainer.style.boxShadow = '0 0 10px #58a6ff';
+            if (this.gameContainer) {
+                this.gameContainer.style.boxShadow = '0 0 10px #58a6ff';
+            }
 
-            const terminal = document.querySelector('.terminal');
+            const terminal = document.querySelector('.terminal') as HTMLElement;
             if (terminal) {
                 terminal.style.boxShadow = 'none';
             }
@@ -156,39 +184,47 @@ export class SnakeGame {
 
         this.gameContainer.addEventListener('blur', () => {
             this.gameHasFocus = false;
-            this.gameContainer.style.boxShadow = 'none';
+            if (this.gameContainer) {
+                this.gameContainer.style.boxShadow = 'none';
+            }
         });
     }
 
-    handleKeyDown(e) {
-        if (!this.gameHasFocus && e.code !== 'Escape') {return;}
+    handleKeyDown(e: KeyboardEvent) {
+        if (!this.gameHasFocus && e.code !== 'Escape') {
+            return;
+        }
 
         switch (e.code) {
             case 'ArrowUp':
             case 'KeyW':
                 if (this.gameHasFocus && this.dy === 0) {
-                    this.dx = 0; this.dy = -1;
+                    this.dx = 0;
+                    this.dy = -1;
                     e.preventDefault();
                 }
                 break;
             case 'ArrowDown':
             case 'KeyS':
                 if (this.gameHasFocus && this.dy === 0) {
-                    this.dx = 0; this.dy = 1;
+                    this.dx = 0;
+                    this.dy = 1;
                     e.preventDefault();
                 }
                 break;
             case 'ArrowLeft':
             case 'KeyA':
                 if (this.gameHasFocus && this.dx === 0) {
-                    this.dx = -1; this.dy = 0;
+                    this.dx = -1;
+                    this.dy = 0;
                     e.preventDefault();
                 }
                 break;
             case 'ArrowRight':
             case 'KeyD':
                 if (this.gameHasFocus && this.dx === 0) {
-                    this.dx = 1; this.dy = 0;
+                    this.dx = 1;
+                    this.dy = 0;
                     e.preventDefault();
                 }
                 break;
@@ -220,6 +256,9 @@ export class SnakeGame {
     }
 
     drawGame() {
+        if (!this.ctx || !this.canvas) {
+            return;
+        }
         // Clear canvas
         this.ctx.fillStyle = '#161b22';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -265,7 +304,9 @@ export class SnakeGame {
         // Check food collision
         if (head.x === this.food.x && head.y === this.food.y) {
             this.score++;
-            this.scoreElement.textContent = this.score;
+            if (this.scoreElement) {
+                this.scoreElement.textContent = String(this.score);
+            }
             this.generateFood();
         } else {
             this.snake.pop();
@@ -278,7 +319,9 @@ export class SnakeGame {
                 x: Math.floor(Math.random() * this.tileCount),
                 y: Math.floor(Math.random() * this.tileCount),
             };
-        } while (this.snake.some(segment => segment.x === this.food.x && segment.y === this.food.y));
+        } while (
+            this.snake.some(segment => segment.x === this.food.x && segment.y === this.food.y)
+        );
     }
 
     resetGame() {
@@ -286,7 +329,9 @@ export class SnakeGame {
         this.dx = 0;
         this.dy = 0;
         this.score = 0;
-        this.scoreElement.textContent = this.score;
+        if (this.scoreElement) {
+            this.scoreElement.textContent = String(this.score);
+        }
         this.generateFood();
     }
 

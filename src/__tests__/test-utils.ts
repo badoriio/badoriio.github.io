@@ -5,7 +5,7 @@
 // Mock DOM element factory
 export function createMockElement(tag: string = 'div'): HTMLElement {
     const element = document.createElement(tag);
-    
+
     // Add common properties
     Object.defineProperties(element, {
         offsetWidth: { value: 100, writable: true },
@@ -33,7 +33,7 @@ export function createMockElement(tag: string = 'div'): HTMLElement {
 // Mock canvas element
 export function createMockCanvas(): HTMLCanvasElement {
     const canvas = document.createElement('canvas') as HTMLCanvasElement;
-    
+
     Object.defineProperties(canvas, {
         width: { value: 400, writable: true },
         height: { value: 300, writable: true },
@@ -59,7 +59,10 @@ export function createMockEvent(type: string, properties: Record<string, any> = 
 }
 
 // Mock mouse event
-export function createMockMouseEvent(type: string, properties: Record<string, any> = {}): MouseEvent {
+export function createMockMouseEvent(
+    type: string,
+    properties: Record<string, any> = {},
+): MouseEvent {
     const event = new MouseEvent(type, {
         bubbles: true,
         cancelable: true,
@@ -69,7 +72,10 @@ export function createMockMouseEvent(type: string, properties: Record<string, an
 }
 
 // Mock keyboard event
-export function createMockKeyboardEvent(type: string, properties: Record<string, any> = {}): KeyboardEvent {
+export function createMockKeyboardEvent(
+    type: string,
+    properties: Record<string, any> = {},
+): KeyboardEvent {
     const event = new KeyboardEvent(type, {
         bubbles: true,
         cancelable: true,
@@ -80,7 +86,7 @@ export function createMockKeyboardEvent(type: string, properties: Record<string,
 
 // Wait for next tick
 export function waitForNextTick(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, 0));
+    return new Promise(resolve => setTimeout(resolve, 0));
 }
 
 // Wait for condition
@@ -91,7 +97,7 @@ export function waitFor(
 ): Promise<void> {
     return new Promise((resolve, reject) => {
         const startTime = Date.now();
-        
+
         const check = () => {
             if (condition()) {
                 resolve();
@@ -101,7 +107,7 @@ export function waitFor(
                 setTimeout(check, interval);
             }
         };
-        
+
         check();
     });
 }
@@ -109,7 +115,7 @@ export function waitFor(
 // Mock local storage
 export function mockLocalStorage(): void {
     const storage: Record<string, string> = {};
-    
+
     Object.defineProperty(window, 'localStorage', {
         value: {
             getItem: jest.fn((key: string) => storage[key] || null),

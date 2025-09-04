@@ -86,7 +86,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'javascript-typescript' ] # Updated to newer language identifier
+        # Support both old and new language identifiers during transition
+        language: [ 'javascript', 'javascript-typescript' ]
 
     steps:
     - name: 📥 Checkout repository

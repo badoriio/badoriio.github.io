@@ -1,0 +1,9 @@
+/**
+ * Main stylesheet - imports all component styles
+ */
+
+/* Import base styles and components */
+@import url('../../src/styles/base.css');
+@import url('../../src/styles/terminal.css');
+@import url('../../src/styles/contact.css');
+@import url('../../src/styles/responsive.css');

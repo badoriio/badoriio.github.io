@@ -126,14 +126,29 @@ jobs:
         echo "|-------|------|---------|" >> $GITHUB_STEP_SUMMARY
         
         total_size=0
-        for file in dist/assets/*.{js,css} dist/index.html 2>/dev/null; do
-          if [ -f "$file" ]; then
-            size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file")
-            gzip_size=$(gzip -c "$file" | wc -c)
-            size_kb=$((size / 1024))
-            gzip_kb=$((gzip_size / 1024))
-            total_size=$((total_size + size))
-            echo "| $(basename "$file") | ${size_kb}KB | ${gzip_kb}KB |" >> $GITHUB_STEP_SUMMARY
+        # Process JavaScript and CSS files
+        for pattern in "dist/assets/*.js" "dist/assets/*.css" "dist/index.html"; do
+          if ls $pattern 1> /dev/null 2>&1; then
+            for file in $pattern; do
+              if [ -f "$file" ]; then
+                # Get file size (cross-platform)
+                if command -v stat >/dev/null; then
+                  if stat -c%s "$file" >/dev/null 2>&1; then
+                    size=$(stat -c%s "$file")
+                  else
+                    size=$(stat -f%z "$file")
+                  fi
+                else
+                  size=$(wc -c < "$file")
+                fi
+                
+                gzip_size=$(gzip -c "$file" | wc -c)
+                size_kb=$((size / 1024))
+                gzip_kb=$((gzip_size / 1024))
+                total_size=$((total_size + size))
+                echo "| $(basename "$file") | ${size_kb}KB | ${gzip_kb}KB |" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
           fi
         done
         

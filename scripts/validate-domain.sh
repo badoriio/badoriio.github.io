@@ -43,7 +43,16 @@ fi
 
 # Validate file sizes (performance check)
 if [ -f "dist/index.html" ]; then
-    html_size=$(stat -f%z "dist/index.html" 2>/dev/null || stat -c%s "dist/index.html")
+    # Get file size (cross-platform)
+    if command -v stat >/dev/null; then
+        if stat -c%s "dist/index.html" >/dev/null 2>&1; then
+            html_size=$(stat -c%s "dist/index.html")
+        else
+            html_size=$(stat -f%z "dist/index.html")
+        fi
+    else
+        html_size=$(wc -c < "dist/index.html")
+    fi
     html_kb=$((html_size / 1024))
     echo "📄 index.html size: ${html_kb}KB"
 fi
@@ -53,23 +62,45 @@ total_js_size=0
 total_css_size=0
 
 if [ -d "dist/assets" ]; then
-    for file in dist/assets/*.js; do
-        if [ -f "$file" ]; then
-            size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file")
-            size_kb=$((size / 1024))
-            total_js_size=$((total_js_size + size))
-            echo "📦 $(basename "$file"): ${size_kb}KB"
-        fi
-    done
+    if ls dist/assets/*.js >/dev/null 2>&1; then
+        for file in dist/assets/*.js; do
+            if [ -f "$file" ]; then
+                # Get file size (cross-platform)
+                if command -v stat >/dev/null; then
+                    if stat -c%s "$file" >/dev/null 2>&1; then
+                        size=$(stat -c%s "$file")
+                    else
+                        size=$(stat -f%z "$file")
+                    fi
+                else
+                    size=$(wc -c < "$file")
+                fi
+                size_kb=$((size / 1024))
+                total_js_size=$((total_js_size + size))
+                echo "📦 $(basename "$file"): ${size_kb}KB"
+            fi
+        done
+    fi
     
-    for file in dist/assets/*.css; do
-        if [ -f "$file" ]; then
-            size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file")
-            size_kb=$((size / 1024))
-            total_css_size=$((total_css_size + size))
-            echo "🎨 $(basename "$file"): ${size_kb}KB"
-        fi
-    done
+    if ls dist/assets/*.css >/dev/null 2>&1; then
+        for file in dist/assets/*.css; do
+            if [ -f "$file" ]; then
+                # Get file size (cross-platform)
+                if command -v stat >/dev/null; then
+                    if stat -c%s "$file" >/dev/null 2>&1; then
+                        size=$(stat -c%s "$file")
+                    else
+                        size=$(stat -f%z "$file")
+                    fi
+                else
+                    size=$(wc -c < "$file")
+                fi
+                size_kb=$((size / 1024))
+                total_css_size=$((total_css_size + size))
+                echo "🎨 $(basename "$file"): ${size_kb}KB"
+            fi
+        done
+    fi
 fi
 
 total_kb=$(((total_js_size + total_css_size) / 1024))

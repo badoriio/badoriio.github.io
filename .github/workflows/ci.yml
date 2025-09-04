@@ -183,37 +183,63 @@ jobs:
         echo "|------|------|---------|---------|" >> $GITHUB_STEP_SUMMARY
         
         total_size=0
-        for file in dist/assets/*.js; do
-          if [ -f "$file" ]; then
-            size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file")
-            gzip_size=$(gzip -c "$file" | wc -c)
-            size_kb=$((size / 1024))
-            gzip_kb=$((gzip_size / 1024))
-            total_size=$((total_size + size))
-            
-            status="✅"
-            if [ $size_kb -gt 250 ]; then status="⚠️"; fi
-            if [ $size_kb -gt 500 ]; then status="❌"; fi
-            
-            echo "| $(basename "$file") | ${size_kb}KB | ${gzip_kb}KB | $status |" >> $GITHUB_STEP_SUMMARY
-          fi
-        done
+        # Process JavaScript files
+        if ls dist/assets/*.js 1> /dev/null 2>&1; then
+          for file in dist/assets/*.js; do
+            if [ -f "$file" ]; then
+              # Get file size (cross-platform)
+              if command -v stat >/dev/null; then
+                if stat -c%s "$file" >/dev/null 2>&1; then
+                  size=$(stat -c%s "$file")
+                else
+                  size=$(stat -f%z "$file")
+                fi
+              else
+                size=$(wc -c < "$file")
+              fi
+              
+              gzip_size=$(gzip -c "$file" | wc -c)
+              size_kb=$((size / 1024))
+              gzip_kb=$((gzip_size / 1024))
+              total_size=$((total_size + size))
+              
+              status="✅"
+              if [ $size_kb -gt 250 ]; then status="⚠️"; fi
+              if [ $size_kb -gt 500 ]; then status="❌"; fi
+              
+              echo "| $(basename "$file") | ${size_kb}KB | ${gzip_kb}KB | $status |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+        fi
         
-        for file in dist/assets/*.css; do
-          if [ -f "$file" ]; then
-            size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file")
-            gzip_size=$(gzip -c "$file" | wc -c)
-            size_kb=$((size / 1024))
-            gzip_kb=$((gzip_size / 1024))
-            total_size=$((total_size + size))
-            
-            status="✅"
-            if [ $size_kb -gt 50 ]; then status="⚠️"; fi
-            if [ $size_kb -gt 100 ]; then status="❌"; fi
-            
-            echo "| $(basename "$file") | ${size_kb}KB | ${gzip_kb}KB | $status |" >> $GITHUB_STEP_SUMMARY
-          fi
-        done
+        # Process CSS files
+        if ls dist/assets/*.css 1> /dev/null 2>&1; then
+          for file in dist/assets/*.css; do
+            if [ -f "$file" ]; then
+              # Get file size (cross-platform)
+              if command -v stat >/dev/null; then
+                if stat -c%s "$file" >/dev/null 2>&1; then
+                  size=$(stat -c%s "$file")
+                else
+                  size=$(stat -f%z "$file")
+                fi
+              else
+                size=$(wc -c < "$file")
+              fi
+              
+              gzip_size=$(gzip -c "$file" | wc -c)
+              size_kb=$((size / 1024))
+              gzip_kb=$((gzip_size / 1024))
+              total_size=$((total_size + size))
+              
+              status="✅"
+              if [ $size_kb -gt 50 ]; then status="⚠️"; fi
+              if [ $size_kb -gt 100 ]; then status="❌"; fi
+              
+              echo "| $(basename "$file") | ${size_kb}KB | ${gzip_kb}KB | $status |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+        fi
         
         total_kb=$((total_size / 1024))
         echo "total-size=${total_kb}" >> $GITHUB_OUTPUT

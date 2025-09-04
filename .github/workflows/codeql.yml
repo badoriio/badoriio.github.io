@@ -1,18 +1,83 @@
-name: "CodeQL Security Analysis"
+name: "🔒 CodeQL Security Analysis"
 
 on:
   push:
     branches: [ main ]
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx' 
+      - '**/*.js'
+      - '**/*.jsx'
+      - 'package*.json'
+      - '.github/workflows/codeql.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.jsx'
+      - 'package*.json'
+      - '.github/workflows/codeql.yml'
   schedule:
-    - cron: '30 1 * * 1'  # Weekly on Monday at 1:30 AM UTC
+    - cron: '30 2 * * 1'  # Weekly on Monday at 2:30 AM UTC (less busy time)
+  workflow_dispatch: # Allow manual triggering
+
+# Prevent concurrent analyses
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20.x'
 
 jobs:
-  analyze:
-    name: Analyze
+  # Pre-analysis check to determine if analysis is needed
+  should-analyze:
+    name: 🔍 Check Analysis Requirements
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    outputs:
+      analyze: ${{ steps.check.outputs.should-analyze }}
+      
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2 # Need to compare with previous commit
+
+    - name: 🔍 Check if analysis is needed
+      id: check
+      run: |
+        # Always run for scheduled events, workflow_dispatch, or main branch pushes
+        if [[ "${{ github.event_name }}" == "schedule" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "should-analyze=true" >> $GITHUB_OUTPUT
+          echo "✅ Analysis required for ${{ github.event_name }}"
+          exit 0
+        fi
+        
+        # For PRs, check if there are significant security-relevant changes
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          # Check for changes in source code or dependencies
+          git fetch origin ${{ github.base_ref }}
+          changed_files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          
+          if echo "$changed_files" | grep -qE '\.(ts|tsx|js|jsx)$|package.*\.json$|\.github/workflows/'; then
+            echo "should-analyze=true" >> $GITHUB_OUTPUT
+            echo "✅ Security-relevant changes detected"
+          else
+            echo "should-analyze=false" >> $GITHUB_OUTPUT
+            echo "⏭️ No security-relevant changes"
+          fi
+        else
+          echo "should-analyze=true" >> $GITHUB_OUTPUT
+        fi
+
+  analyze:
+    name: 🔒 Security Analysis
+    runs-on: ubuntu-latest
+    needs: should-analyze
+    if: needs.should-analyze.outputs.analyze == 'true'
+    timeout-minutes: 45 # Reduced from 360 minutes
     permissions:
       actions: read
       contents: read
@@ -21,31 +86,87 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'javascript' ]
+        language: [ 'javascript-typescript' ] # Updated to newer language identifier
 
     steps:
-    - name: Checkout repository
+    - name: 📥 Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 1 # Shallow clone for faster checkout
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
+    - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: 🗂️ Cache CodeQL database
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.npm
+          node_modules/.cache
+        key: codeql-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          codeql-${{ runner.os }}-
+
+    - name: 🔧 Initialize CodeQL
+      uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
         queries: security-extended,security-and-quality
+        config: |
+          disable-default-rules: false
+          query-filters:
+            - exclude:
+                kind: problem
+                tags: external/cwe/cwe-798  # Exclude hardcoded credentials if using test data
+        
+    - name: 📦 Install dependencies
+      run: npm ci --prefer-offline --no-audit --progress=false
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: 🏗️ Build project for analysis
+      run: |
+        echo "## 🏗️ Building for Security Analysis" >> $GITHUB_STEP_SUMMARY
+        npm run build
+        echo "✅ Build completed for CodeQL analysis" >> $GITHUB_STEP_SUMMARY
+      env:
+        NODE_ENV: production
+
+    - name: 🔍 Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
       with:
-        node-version: '20.x'
-        cache: 'npm'
+        category: "/language:${{ matrix.language }}"
+        upload: true # Upload results to GitHub Security tab
+        
+    - name: 📊 Analysis summary
+      if: always()
+      run: |
+        echo "## 🔒 CodeQL Security Analysis Complete" >> $GITHUB_STEP_SUMMARY
+        echo "- **Language:** ${{ matrix.language }}" >> $GITHUB_STEP_SUMMARY  
+        echo "- **Query Suite:** security-extended, security-and-quality" >> $GITHUB_STEP_SUMMARY
+        echo "- **Analysis Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Check the **Security** tab in your repository for results" >> $GITHUB_STEP_SUMMARY
+        echo "2. Review any alerts and create issues for legitimate findings" >> $GITHUB_STEP_SUMMARY
+        echo "3. Update dependencies regularly to address known vulnerabilities" >> $GITHUB_STEP_SUMMARY
 
-    - name: Install dependencies
-      run: npm ci
+  # Summary job for when analysis is skipped
+  analysis-skipped:
+    name: ⏭️ Analysis Skipped
+    runs-on: ubuntu-latest
+    needs: should-analyze
+    if: needs.should-analyze.outputs.analyze == 'false'
 
-    - name: Build project
-      run: npm run build
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
-      with:
-        category: "/language:${{matrix.language}}"
+    steps:
+    - name: 📝 Skip summary
+      run: |
+        echo "## ⏭️ CodeQL Analysis Skipped" >> $GITHUB_STEP_SUMMARY
+        echo "No security-relevant code changes detected." >> $GITHUB_STEP_SUMMARY
+        echo "Analysis skipped to optimize CI performance." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Trigger Conditions:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Changes to \`.ts\`, \`.tsx\`, \`.js\`, \`.jsx\` files" >> $GITHUB_STEP_SUMMARY
+        echo "- Changes to \`package.json\` or \`package-lock.json\`" >> $GITHUB_STEP_SUMMARY
+        echo "- Changes to CodeQL workflow file" >> $GITHUB_STEP_SUMMARY

@@ -33,7 +33,7 @@ jobs:
       should-run-full-ci: ${{ steps.changes.outputs.should-run }}
     steps:
     - name: 📥 Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 1 # Shallow clone for speed
 
@@ -63,7 +63,7 @@ jobs:
 
     steps:
     - name: 📥 Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 1
 
@@ -116,7 +116,7 @@ jobs:
 
     steps:
     - name: 📥 Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 1
 
@@ -145,7 +145,7 @@ jobs:
 
     steps:
     - name: 📥 Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 1
 
@@ -238,7 +238,7 @@ jobs:
 
     steps:
     - name: 📥 Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 1
 

@@ -41,7 +41,7 @@ jobs:
       
     steps:
     - name: 📥 Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 2 # Need to compare with previous commit
 
@@ -91,7 +91,7 @@ jobs:
 
     steps:
     - name: 📥 Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 1 # Shallow clone for faster checkout
 

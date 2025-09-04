@@ -1,7 +1,7 @@
 /**
  * Matrix rain background effect component
  */
-import { CONFIG } from '../utils/constants.js';
+import { CONFIG } from '../utils/constants';
 
 export class MatrixBackground {
     private canvas: HTMLCanvasElement | null = null;
@@ -18,6 +18,7 @@ export class MatrixBackground {
 
     createCanvas() {
         this.canvas = document.createElement('canvas');
+        if (!this.canvas) {return;}
         this.canvas.id = 'matrix-bg';
         this.canvas.style.cssText = `
             position: fixed;

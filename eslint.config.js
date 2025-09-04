@@ -31,6 +31,7 @@ export default [
                 CustomEvent: 'readonly',
                 NodeJS: 'readonly',
                 process: 'readonly',
+                crypto: 'readonly',
             },
         },
         plugins: {

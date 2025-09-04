@@ -3,7 +3,11 @@
  */
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { DragHandler } from '../DragHandler';
-import { createMockElement, createMockMouseEvent, waitForNextTick } from '../../__tests__/test-utils';
+import {
+    createMockElement,
+    createMockMouseEvent,
+    waitForNextTick,
+} from '../../__tests__/test-utils';
 
 describe('DragHandler', () => {
     let element: HTMLElement;
@@ -13,7 +17,7 @@ describe('DragHandler', () => {
     beforeEach(() => {
         element = createMockElement('div');
         dragHandle = createMockElement('div');
-        
+
         // Mock initial positioning
         element.getBoundingClientRect = jest.fn(() => ({
             left: 100,
@@ -71,24 +75,32 @@ describe('DragHandler', () => {
     });
 
     it('should not start dragging when clicking close button', () => {
-        dragHandler = new DragHandler(element, dragHandle);
         const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+        dragHandler = new DragHandler(element, dragHandle);
 
         const closeButton = createMockElement('div');
         closeButton.id = 'closeGame';
-        
+
         const mouseEvent = createMockMouseEvent('mousedown', {
-            target: closeButton,
             clientX: 150,
             clientY: 100,
         });
+
+        // Manually set the target since MouseEvent constructor doesn't accept target
+        Object.defineProperty(mouseEvent, 'target', {
+            value: closeButton,
+            writable: false,
+        });
+
+        // Clear any calls from initialization
+        addEventListenerSpy.mockClear();
 
         dragHandle.dispatchEvent(mouseEvent);
 
         expect(addEventListenerSpy).not.toHaveBeenCalledWith('mousemove', expect.any(Function));
     });
 
-    it('should update element position on mouse move', async () => {
+    it('should update element position on mouse move', async() => {
         dragHandler = new DragHandler(element, dragHandle);
 
         // Start dragging
@@ -111,12 +123,12 @@ describe('DragHandler', () => {
 
         // Position should be updated (clientX - offsetX, clientY - offsetY)
         expect(element.style.left).toBe('150px'); // 200 - 50 (offsetX)
-        expect(element.style.top).toBe('100px');  // 150 - 50 (offsetY)
+        expect(element.style.top).toBe('100px'); // 150 - 50 (offsetY)
     });
 
-    it('should constrain element within viewport bounds', async () => {
+    it('should constrain element within viewport bounds', async() => {
         dragHandler = new DragHandler(element, dragHandle);
-        
+
         // Mock element dimensions
         Object.defineProperty(element, 'offsetWidth', { value: 100 });
         Object.defineProperty(element, 'offsetHeight', { value: 100 });
@@ -145,7 +157,7 @@ describe('DragHandler', () => {
         expect(parseInt(element.style.top)).toBeLessThanOrEqual(maxY);
     });
 
-    it('should prevent negative positions', async () => {
+    it('should prevent negative positions', async() => {
         dragHandler = new DragHandler(element, dragHandle);
 
         // Start dragging
@@ -169,7 +181,7 @@ describe('DragHandler', () => {
         expect(parseInt(element.style.top)).toBeGreaterThanOrEqual(0);
     });
 
-    it('should stop dragging on mouse up', async () => {
+    it('should stop dragging on mouse up', async() => {
         dragHandler = new DragHandler(element, dragHandle);
         const removeEventListenerSpy = jest.spyOn(document, 'removeEventListener');
 
@@ -196,21 +208,27 @@ describe('DragHandler', () => {
         dragHandler.destroy();
 
         expect(removeEventListenerSpy).toHaveBeenCalledWith('mousedown', expect.any(Function));
-        expect(documentRemoveEventListenerSpy).toHaveBeenCalledWith('mousemove', expect.any(Function));
-        expect(documentRemoveEventListenerSpy).toHaveBeenCalledWith('mouseup', expect.any(Function));
+        expect(documentRemoveEventListenerSpy).toHaveBeenCalledWith(
+            'mousemove',
+            expect.any(Function),
+        );
+        expect(documentRemoveEventListenerSpy).toHaveBeenCalledWith(
+            'mouseup',
+            expect.any(Function),
+        );
     });
 
     it('should handle multiple drag operations correctly', () => {
         dragHandler = new DragHandler(element, dragHandle);
-        
+
         // First drag operation
         let mouseDownEvent = createMockMouseEvent('mousedown', {
             clientX: 150,
             clientY: 100,
         });
         dragHandle.dispatchEvent(mouseDownEvent);
-        
-        let mouseUpEvent = createMockMouseEvent('mouseup');
+
+        const mouseUpEvent = createMockMouseEvent('mouseup');
         document.dispatchEvent(mouseUpEvent);
 
         // Second drag operation

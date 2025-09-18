@@ -1,9 +1,20 @@
 import { defineConfig } from 'vite';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
     root: '.',
     base: '/', // Custom domain: badori.io
     publicDir: 'public', // Ensure CNAME and other static files are copied
+    plugins: [
+        viteStaticCopy({
+            targets: [
+                {
+                    src: 'public/.well-known',
+                    dest: '.',
+                },
+            ],
+        }),
+    ],
     build: {
         target: 'es2020',
         outDir: 'dist',
@@ -22,7 +33,7 @@ export default defineConfig({
                 entryFileNames: 'assets/[name].[hash].js',
                 chunkFileNames: 'assets/[name].[hash].js',
                 assetFileNames: assetInfo => {
-                    if (assetInfo.name?.endsWith('.css')) {
+                    if (assetInfo?.name?.endsWith('.css')) {
                         return 'assets/[name].[hash].css';
                     }
                     return 'assets/[name].[hash].[ext]';

@@ -174,14 +174,14 @@ export class Terminal {
         }
     }
 
-    executeCommand() {
+    async executeCommand() {
         const command = this.currentInput.trim();
         if (command && command !== this.commandHistory[this.commandHistory.length - 1]) {
             this.commandHistory.push(command);
         }
 
         this.addCommandLine(command);
-        this.processCommand(command);
+        await this.processCommand(command);
 
         this.resetInput();
         this.scrollToBottom();
@@ -199,19 +199,19 @@ export class Terminal {
         }
     }
 
-    processCommand(command: string) {
+    async processCommand(command: string) {
         if (command === '') {
             return;
         }
 
         if (this.commands[command]) {
-            this.handleBuiltInCommand(command);
+            await this.handleBuiltInCommand(command);
         } else {
             this.showCommandNotFound(command);
         }
     }
 
-    handleBuiltInCommand(command: string) {
+    async handleBuiltInCommand(command: string) {
         if (command === 'clear') {
             this.clearScreen();
             return;
@@ -230,10 +230,15 @@ export class Terminal {
 
         const output = document.createElement('div');
         output.className = 'output success';
-        const response =
-            typeof this.commands[command] === 'function'
-                ? this.commands[command]()
-                : this.commands[command];
+
+        let response: string;
+        if (typeof this.commands[command] === 'function') {
+            const result = this.commands[command]();
+            response = result instanceof Promise ? await result : result;
+        } else {
+            response = this.commands[command] as string;
+        }
+
         output.innerHTML = response.replace(/\n/g, '<br>');
         if (this.terminalContent && this.interactiveLine) {
             this.terminalContent.insertBefore(output, this.interactiveLine);

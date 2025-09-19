@@ -46,6 +46,7 @@
     "@testing-library/jest-dom": "^6.8.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.3.1",
+    "@types/qrcode": "^1.5.5",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
     "eslint": "^9.34.0",
@@ -61,5 +62,8 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.4",
     "vite-plugin-static-copy": "^3.1.2"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
   }
 }

@@ -18,7 +18,8 @@ export class SnakeGame {
     gameInterval: any;
     gameHasFocus: boolean;
     gridSize: number;
-    tileCount: number;
+    tileCountX: number;
+    tileCountY: number;
 
     constructor() {
         this.gameContainer = null;
@@ -38,7 +39,8 @@ export class SnakeGame {
 
         // Game config
         this.gridSize = CONFIG.TERMINAL.GRID_SIZE;
-        this.tileCount = 0;
+        this.tileCountX = 0;
+        this.tileCountY = 0;
     }
 
     create() {
@@ -142,7 +144,8 @@ export class SnakeGame {
         }
         this.ctx = this.canvas.getContext('2d');
         this.scoreElement = document.getElementById('gameScore');
-        this.tileCount = this.canvas.width / this.gridSize;
+        this.tileCountX = this.canvas.width / this.gridSize;
+        this.tileCountY = this.canvas.height / this.gridSize;
     }
 
     setupDragging() {
@@ -288,7 +291,7 @@ export class SnakeGame {
         const head = { x: this.snake[0].x + this.dx, y: this.snake[0].y + this.dy };
 
         // Check wall collision
-        if (head.x < 0 || head.x >= this.tileCount || head.y < 0 || head.y >= this.tileCount) {
+        if (head.x < 0 || head.x >= this.tileCountX || head.y < 0 || head.y >= this.tileCountY) {
             this.resetGame();
             return;
         }
@@ -316,8 +319,8 @@ export class SnakeGame {
     generateFood() {
         do {
             this.food = {
-                x: Math.floor(Math.random() * this.tileCount),
-                y: Math.floor(Math.random() * this.tileCount),
+                x: Math.floor(Math.random() * this.tileCountX),
+                y: Math.floor(Math.random() * this.tileCountY),
             };
         } while (
             this.snake.some(segment => segment.x === this.food.x && segment.y === this.food.y)

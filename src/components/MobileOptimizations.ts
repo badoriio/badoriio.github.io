@@ -19,10 +19,12 @@ export class MobileOptimizations {
             /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
 
-    init(terminal?: Terminal): void {
-        if (!this.isMobile) {return;}
+    init(terminal?: Terminal | null): void {
+        if (!this.isMobile) {
+            return;
+        }
 
-        this.terminal = terminal;
+        this.terminal = terminal || null;
         this.setupMobileKeyboard();
         this.setupMobileHint();
         this.setupMobileScrollIndicator();
@@ -77,7 +79,9 @@ export class MobileOptimizations {
     }
 
     private handleInput(): void {
-        if (!this.hiddenInput || !this.terminal) {return;}
+        if (!this.hiddenInput || !this.terminal) {
+            return;
+        }
 
         const value = this.hiddenInput.value;
         // Set terminal input to the new value (handles both typing and backspace)

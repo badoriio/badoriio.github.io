@@ -140,7 +140,7 @@ export class MobileOptimizations {
         document.body.appendChild(scrollIndicator);
 
         // Update scroll indicator position with smooth animations
-        let scrollTimeout: number | null = null;
+        let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
 
         const updateScrollIndicator = (): void => {
             const scrollTop = window.pageYOffset;
@@ -195,7 +195,7 @@ export class MobileOptimizations {
             hintElement.style.zIndex = '5';
             hintElement.style.pointerEvents = 'none';
 
-            terminalContent.style.position = 'relative';
+            (terminalContent as HTMLElement).style.position = 'relative';
             terminalContent.appendChild(hintElement);
 
             // Hide hint after first interaction

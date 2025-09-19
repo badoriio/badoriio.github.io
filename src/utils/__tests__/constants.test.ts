@@ -1,7 +1,16 @@
 /**
  * Tests for constants and configuration
  */
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, jest } from '@jest/globals';
+
+// Mock the qrcode module
+jest.mock('../qrcode', () => ({
+    createQRCodeHTML: jest.fn(
+        async() =>
+            '<br><img src="data:image/png;base64,mock" alt="QR Code" style="display: block; margin: 10px 0; max-width: 100%; height: auto;" />',
+    ),
+}));
+
 import { CONFIG, COMMANDS } from '../constants';
 
 describe('Constants', () => {
@@ -43,7 +52,17 @@ describe('Constants', () => {
 
     describe('COMMANDS', () => {
         it('should have all required command keys', () => {
-            const expectedKeys = ['help', 'about', 'contact', 'date', 'clear', 'pwd', 'exit', 'game'];
+            const expectedKeys = [
+                'help',
+                'about',
+                'contact',
+                'nostr',
+                'lighting',
+                'clear',
+                'pwd',
+                'exit',
+                'game',
+            ];
             expectedKeys.forEach(key => {
                 expect(COMMANDS).toHaveProperty(key);
             });
@@ -55,33 +74,48 @@ describe('Constants', () => {
             expect(helpText).toContain('help');
             expect(helpText).toContain('about');
             expect(helpText).toContain('contact');
+            expect(helpText).toContain('nostr');
+            expect(helpText).toContain('lighting');
             expect(helpText).toContain('clear');
             expect(helpText).toContain('exit');
             expect(helpText).toContain('game');
         });
 
-        it('should have about command with project description', () => {
+        it('should have about command', () => {
             const aboutText = COMMANDS.about as string;
             expect(typeof aboutText).toBe('string');
-            expect(aboutText).toContain('BADORIIO');
-            expect(aboutText.length).toBeGreaterThan(10);
+            expect(aboutText).toBe('🗿');
         });
 
         it('should have contact command with proper links', () => {
             const contactText = COMMANDS.contact as string;
             expect(typeof contactText).toBe('string');
-            expect(contactText).toContain('amir@badori.io');
+            expect(contactText).toContain('me@badori.io');
             expect(contactText).toContain('https://x.com/Badoriie');
             expect(contactText).toContain('https://github.com/badoriio');
             expect(contactText).toContain('<a href=');
         });
 
-        it('should have date command as function', () => {
-            expect(typeof COMMANDS.date).toBe('function');
-            
-            const dateResult = (COMMANDS.date as Function)();
-            expect(typeof dateResult).toBe('string');
-            expect(dateResult.length).toBeGreaterThan(0);
+        it('should have nostr command as async function', async() => {
+            expect(typeof COMMANDS.nostr).toBe('function');
+
+            const nostrResult = await (COMMANDS.nostr as Function)();
+            expect(typeof nostrResult).toBe('string');
+            expect(nostrResult).toContain(
+                'npub1q5vqemfc4qkscj97wael7clkqstjkj335ykjvydlcep0g888v42qqmy4un',
+            );
+            expect(nostrResult).toContain('<img src=');
+        });
+
+        it('should have lighting command as async function', async() => {
+            expect(typeof COMMANDS.lighting).toBe('function');
+
+            const lightingResult = await (COMMANDS.lighting as Function)();
+            expect(typeof lightingResult).toBe('string');
+            expect(lightingResult).toContain(
+                'lno1zrxq8pjw7qjlm68mtp7e3yvxee4y5xrgjhhyf2fxhlphpckrvevh50u0q27',
+            );
+            expect(lightingResult).toContain('<img src=');
         });
 
         it('should have special command values', () => {
@@ -92,15 +126,6 @@ describe('Constants', () => {
 
         it('should have pwd command as string', () => {
             expect(typeof COMMANDS.pwd).toBe('string');
-        });
-
-        it('date function should return valid date string', () => {
-            const dateFunc = COMMANDS.date as Function;
-            const result = dateFunc();
-            
-            // Should be a valid date string
-            expect(result).toMatch(/\d{4}/); // Should contain year
-            expect(result).toContain(':'); // Should contain time
         });
 
         it('should not have any null or undefined values except pwd', () => {

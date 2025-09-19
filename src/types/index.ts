@@ -3,64 +3,68 @@
  */
 
 export interface Position {
-  x: number;
-  y: number;
+    x: number;
+    y: number;
 }
 
 export interface GameState {
-  snake: Position[];
-  food: Position;
-  dx: number;
-  dy: number;
-  score: number;
-  gameInterval: number | null;
-  gameHasFocus: boolean;
+    snake: Position[];
+    food: Position;
+    dx: number;
+    dy: number;
+    score: number;
+    gameInterval: number | null;
+    gameHasFocus: boolean;
 }
 
 export interface TerminalState {
-  currentInput: string;
-  cursorPosition: number;
-  commandHistory: string[];
-  historyIndex: number;
-  terminalHasFocus: boolean;
+    currentInput: string;
+    cursorPosition: number;
+    commandHistory: string[];
+    historyIndex: number;
+    terminalHasFocus: boolean;
 }
 
 export interface CommandFunction {
-  (): string;
+    (): string;
+}
+
+export interface AsyncCommandFunction {
+    (): Promise<string>;
 }
 
 export interface Commands {
-  [key: string]: string | CommandFunction;
+    [key: string]: string | CommandFunction | AsyncCommandFunction;
 }
 
 export interface Config {
-  TERMINAL: {
-    FPS_DESKTOP: number;
-    FPS_MOBILE: number;
-    GAME_SPEED: number;
-    GRID_SIZE: number;
-  };
-  BREAKPOINTS: {
-    MOBILE: number;
-    SMALL_MOBILE: number;
-  };
-  CHARS: {
-    MATRIX: string;
-  };
+    TERMINAL: {
+        FPS_DESKTOP: number;
+        FPS_MOBILE: number;
+        GAME_SPEED: number;
+        GRID_SIZE: number;
+    };
+    BREAKPOINTS: {
+        MOBILE: number;
+        SMALL_MOBILE: number;
+    };
+    CHARS: {
+        MATRIX: string;
+    };
 }
 
 export interface KeyboardEvent extends Event {
-  key: string;
-  code: string;
-  ctrlKey: boolean;
-  altKey: boolean;
-  metaKey: boolean;
-  preventDefault(): void;
+    key: string;
+    code: string;
+    ctrlKey: boolean;
+    altKey: boolean;
+    metaKey: boolean;
+    preventDefault(): void;
 }
 
 export interface MouseEvent extends Event {
-  clientX: number;
-  clientY: number;
-  target: EventTarget | null;
-  preventDefault(): void;
+    clientX: number;
+    clientY: number;
+    target: EventTarget | null;
+    preventDefault(): void;
 }

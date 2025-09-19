@@ -5,16 +5,18 @@ export default {
     extensionsToTreatAsEsm: ['.ts'],
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
+        '^(\\.{1,2}/.*)\\.js$': '$1',
         '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     },
     transform: {
-        '^.+\\.tsx?$': ['ts-jest', {
-            useESM: true,
-        }],
+        '^.+\\.tsx?$': [
+            'ts-jest',
+            {
+                useESM: true,
+            },
+        ],
     },
-    setupFilesAfterEnv: [
-        '<rootDir>/src/__tests__/setup.ts',
-    ],
+    setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
     testMatch: [
         '<rootDir>/src/**/__tests__/**/*.{test,spec}.{ts,tsx}',
         '<rootDir>/src/**/*.{test,spec}.{ts,tsx}',
@@ -30,10 +32,6 @@ export default {
         '!src/types/**',
     ],
     coverageDirectory: 'coverage',
-    coverageReporters: [
-        'text',
-        'lcov',
-        'html',
-    ],
+    coverageReporters: ['text', 'lcov', 'html'],
     testTimeout: 10000,
 };

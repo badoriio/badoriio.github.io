@@ -32,7 +32,7 @@ class App {
         // Initialize all components
         this.terminal.init();
         this.matrixBackground.init();
-        this.mobileOptimizations.init();
+        this.mobileOptimizations.init(this.terminal);
 
         // Setup global event listeners
         this.setupGameEventListeners();
@@ -54,6 +54,23 @@ class App {
                 this.terminal.setTerminalFocus(false);
             }
         });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            this.cleanup();
+        });
+    }
+
+    private cleanup(): void {
+        if (this.terminal) {
+            this.terminal.destroy();
+        }
+        if (this.mobileOptimizations) {
+            this.mobileOptimizations.destroy();
+        }
+        if (this.currentGame) {
+            this.currentGame.close();
+        }
     }
 }
 

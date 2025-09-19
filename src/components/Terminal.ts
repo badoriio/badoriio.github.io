@@ -3,6 +3,8 @@
  */
 import { COMMANDS } from '../utils/constants.js';
 import { DragHandler } from './DragHandler.js';
+import type { Commands } from '../types/index.js';
+import type { DragHandler as DragHandlerType } from '../types/terminal.js';
 
 export class Terminal {
     prompt: string;
@@ -11,8 +13,8 @@ export class Terminal {
     commandHistory: string[];
     historyIndex: number;
     terminalHasFocus: boolean;
-    dragHandler: any;
-    commands: any;
+    dragHandler: DragHandlerType | null;
+    commands: Commands;
     userInput: HTMLElement | null = null;
     terminalContent: HTMLElement | null = null;
     interactiveLine: HTMLElement | null = null;
@@ -92,7 +94,7 @@ export class Terminal {
         });
     }
 
-    setTerminalFocus(hasFocus: boolean) {
+    setTerminalFocus(hasFocus: boolean): void {
         this.terminalHasFocus = hasFocus;
     }
 
@@ -121,6 +123,15 @@ export class Terminal {
 
     handleKeyDown(e: KeyboardEvent) {
         if (!this.terminalHasFocus) {
+            return;
+        }
+
+        // Skip if this event comes from the mobile hidden input
+        if (
+            e.target &&
+            (e.target as HTMLElement).style &&
+            (e.target as HTMLElement).style.zIndex === '-1'
+        ) {
             return;
         }
 

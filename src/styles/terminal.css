@@ -78,6 +78,13 @@
     color: var(--accent-blue);
 }
 
+.user-input {
+    color: var(--accent-blue);
+    display: inline;
+    vertical-align: baseline;
+    line-height: inherit;
+}
+
 .output {
     color: var(--error-red);
     margin-left: 20px;
@@ -116,8 +123,14 @@
 }
 
 @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
+    0%,
+    50% {
+        opacity: 1;
+    }
+    51%,
+    100% {
+        opacity: 0;
+    }
 }
 
 .typing {
@@ -127,6 +140,10 @@
 }
 
 @keyframes typing {
-    from { width: 0; }
-    to { width: 100%; }
+    from {
+        width: 0;
+    }
+    to {
+        width: 100%;
+    }
 }

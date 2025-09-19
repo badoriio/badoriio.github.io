@@ -57,7 +57,7 @@ describe('Constants', () => {
                 'about',
                 'contact',
                 'nostr',
-                'lighting',
+                'lightning',
                 'clear',
                 'pwd',
                 'exit',
@@ -75,7 +75,7 @@ describe('Constants', () => {
             expect(helpText).toContain('about');
             expect(helpText).toContain('contact');
             expect(helpText).toContain('nostr');
-            expect(helpText).toContain('lighting');
+            expect(helpText).toContain('lightning');
             expect(helpText).toContain('clear');
             expect(helpText).toContain('exit');
             expect(helpText).toContain('game');
@@ -107,15 +107,15 @@ describe('Constants', () => {
             expect(nostrResult).toContain('<img src=');
         });
 
-        it('should have lighting command as async function', async() => {
-            expect(typeof COMMANDS.lighting).toBe('function');
+        it('should have lightning command as async function', async() => {
+            expect(typeof COMMANDS.lightning).toBe('function');
 
-            const lightingResult = await (COMMANDS.lighting as Function)();
-            expect(typeof lightingResult).toBe('string');
-            expect(lightingResult).toContain(
+            const lightningResult = await (COMMANDS.lightning as Function)();
+            expect(typeof lightningResult).toBe('string');
+            expect(lightningResult).toContain(
                 'lno1zrxq8pjw7qjlm68mtp7e3yvxee4y5xrgjhhyf2fxhlphpckrvevh50u0q27',
             );
-            expect(lightingResult).toContain('<img src=');
+            expect(lightningResult).toContain('<img src=');
         });
 
         it('should have special command values', () => {
